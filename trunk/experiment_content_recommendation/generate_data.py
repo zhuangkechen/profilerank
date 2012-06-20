@@ -106,10 +106,10 @@ def generate_data(input_file_name, train_file_name, test_file_name, train_rate, 
 
     #Users and tweets are removed till min_freq_content and min_freq_user hold
     while num_users != prev_num_users or num_tweets != prev_num_tweets:
-        num_users = prev_num_users
-	num_tweets = prev_num_tweets
         (users,num_users) = get_valid_users(input_file_name, tweets, min_freq_user, min_freq_content)
         (tweets,num_tweets) = get_valid_tweets(input_file_name,users, min_freq_content, min_freq_user)
+        prev_num_users = num_users
+	prev_num_tweets = num_tweets
        
     print num_users
     print num_tweets
@@ -177,7 +177,7 @@ def main(argv=None):
         train_file_name = "train.csv"
 	test_file_name = "test.csv"
 	train_rate = 0.5
-	min_freq_content = 5
+	min_freq_content = 2
 	min_freq_user = 5
 
         if len(input_file_name) < 1:
