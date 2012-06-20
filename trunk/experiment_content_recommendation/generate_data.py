@@ -33,7 +33,7 @@ def get_valid_users_init(input_file_name, min_freq_user):
 
     return users, num
         
-def get_valid_users(input_file_name, tweets, min_freq_user):
+def get_valid_users(input_file_name, tweets, min_freq_user, min_freq_content):
     """
         Gets the set of users from the input database, only tweets in the dict 'tweets' are considered
     """
@@ -46,7 +46,7 @@ def get_valid_users(input_file_name, tweets, min_freq_user):
         user = vec[0]
 	content = vec[1]
        
-        if content in tweets:
+        if content in tweets and tweets[content] >= min_freq_content:
             if user not in users:
                 users[user] = 1
 	    else:
@@ -63,7 +63,7 @@ def get_valid_users(input_file_name, tweets, min_freq_user):
 
     return users, num
 
-def get_valid_tweets(input_file_name,users, min_freq_content):
+def get_valid_tweets(input_file_name,users, min_freq_content, min_freq_user):
     """
         Gets the set of tweets from users in the input database
     """
@@ -76,7 +76,7 @@ def get_valid_tweets(input_file_name,users, min_freq_content):
         user = vec[0]
 	content = vec[1]
        
-        if user in users and users[user] > 0:
+        if user in users and users[user] >= min_freq_user:
 	    if content not in tweets:
 	        tweets[content] = 1
 	    else:
@@ -99,7 +99,7 @@ def generate_data(input_file_name, train_file_name, test_file_name, train_rate, 
         Generates input data for the content recommendation experiment
     """
     (users,prev_num_users) = get_valid_users_init(input_file_name, min_freq_user)
-    (tweets,prev_num_tweets) = get_valid_tweets(input_file_name,users,min_freq_content)
+    (tweets,prev_num_tweets) = get_valid_tweets(input_file_name,users,min_freq_content,min_freq_user)
 
     num_tweets = 0
     num_users = 0
@@ -108,8 +108,8 @@ def generate_data(input_file_name, train_file_name, test_file_name, train_rate, 
     while num_users != prev_num_users or num_tweets != prev_num_tweets:
         num_users = prev_num_users
 	num_tweets = prev_num_tweets
-        (users,num_users) = get_valid_users(input_file_name, tweets, min_freq_user)
-        (tweets,num_tweets) = get_valid_tweets(input_file_name,users, min_freq_content)
+        (users,num_users) = get_valid_users(input_file_name, tweets, min_freq_user, min_freq_content)
+        (tweets,num_tweets) = get_valid_tweets(input_file_name,users, min_freq_content, min_freq_user)
        
     print num_users
     print num_tweets
