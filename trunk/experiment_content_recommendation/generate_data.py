@@ -197,7 +197,7 @@ def main(argv=None):
 	    if opt in ('-c', '--min-freq-content'):
 	        min_freq_content = int(arg)
 	    
-	    if opt in ('-c', '--min-freq-user'):
+	    if opt in ('-u', '--min-freq-user'):
 	        min_freq_user = int(arg)
 	    
 	    if opt in ('-h', '--help'):
