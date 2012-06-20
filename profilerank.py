@@ -4,6 +4,7 @@ from scipy.sparse import coo_matrix
 from numpy import array
 from scipy.spatial.distance import sqeuclidean
 import getopt
+import math
 
 def print_matrix(matrix):
     """
@@ -58,7 +59,7 @@ def power_method(M1,M2,num_iterations,damping_factor,num_columns,user=""):
 
     return S.getrow(0).toarray()
 
-def read_data(input_file_name):
+def read_data(input_file_name,function):
     """
     Reads input data. 
     Format:  
@@ -77,6 +78,7 @@ def read_data(input_file_name):
     user_id = 0
     content_id = 0
     sum_user = {}
+    sum_content = {}
 
     user_content = []
     content_user = []
@@ -98,12 +100,61 @@ def read_data(input_file_name):
 	if user not in sum_user:
 	    sum_user[user] = 0
 	
-	if content not in contents:
-	    contents[content] = content_id
-	    content_user.append([content_id,user,1])
-	    content_id = content_id + 1
-	else:
-	    non_dangling_users[user] = 1
+	if function == "single":
+	    if content not in contents:
+	        contents[content] = content_id
+	        content_user.append([content_id,user,1])
+	        sum_content[content_id] = 1
+	        content_id = content_id + 1
+	    else:
+	        non_dangling_users[user] = 1
+	
+	elif function == "uniform":
+	    if content not in contents:
+	        contents[content] = content_id
+	        sum_content[content_id] = 0
+	        content_id = content_id + 1
+	    else:
+	        non_dangling_users[user] = 1
+	        
+            content_user.append([contents[content],user,1])
+	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+
+	elif function == "linear":
+	    if content not in contents:
+	        contents[content] = content_id
+	        sum_content[content_id] = 0
+	        content_id = content_id + 1
+	    else:
+	        non_dangling_users[user] = 1
+            
+	    value = float(1) / (sum_content[contents[content]]+1)
+	    content_user.append([contents[content],user,value])
+	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+
+	elif function == "exponential":
+	    if content not in contents:
+	        contents[content] = content_id
+	        sum_content[content_id] = 0
+	        content_id = content_id + 1
+	    else:
+	        non_dangling_users[user] = 1
+            
+	    value = float(1) / math.exp(sum_content[contents[content]])
+	    content_user.append([contents[content],user,value])
+	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+	
+	elif function == "logarithm":
+	    if content not in contents:
+	        contents[content] = content_id
+	        sum_content[content_id] = 0
+	        content_id = content_id + 1
+	    else:
+	        non_dangling_users[user] = 1
+            
+	    value = float(1) / math.log(sum_content[contents[content]]+2)
+	    content_user.append([contents[content],user,value])
+	    sum_content[contents[content]] = sum_content[contents[content]] + 1
 	    
 	content = contents[content]
 	user_content.append([user,content,1])
@@ -123,6 +174,17 @@ def read_data(input_file_name):
     for i in range(0,len(user_content)):
         user_content[i][2] =  float(user_content[i][2]) / (sum_user[user_content[i][0]])
 
+    for content in sum_content:
+	sum_value = 0.0
+           
+	for j in range(0,len(content_user)):
+	    if content == content_user[j][0]:
+	        sum_value = sum_value + content_user[j][2]
+
+        for j in range(0,len(content_user)):
+	    if content == content_user[j][0]:
+	        content_user[j][2] = float(content_user[j][2]) / (sum_value)
+    
     content_id = content_id + 1
 
 #    print "user_content:"
@@ -163,13 +225,10 @@ def read_data(input_file_name):
 
     return users,contents,UC,CU
 
-def compute_relevance(input_file_name,num_iterations,damping_factor,user):
+def compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function):
     """
-	Computes relevance and influence based on the input_file
+	Computes relevance and influence based on UC and CU
     """
-    #Read the input file
-    (users,contents,UC,CU) = read_data(input_file_name)
-    
     #In case there is an input user, the influence is relative to such user
     if user != "" and user in users:
         relevance_vector = power_method(UC,CU,num_iterations,damping_factor,len(users),users[user])
@@ -317,46 +376,6 @@ def compute_content_statistics(input_file_name):
 
     return (content_num_retweets,content_sum_num_retweets_retweeter,content_user)
 
-"""
-input_file_name = sys.argv[1] or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
-num_iterations = int(sys.argv[2]) or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
-damping_factor = float(sys.argv[3]) or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
-output_file_name = sys.argv[4] or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
-user_or_content = sys.argv[5] or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
-
-USER = ""
-
-if len(sys.argv) > 6:
-    USER = sys.argv[6]
-
-(user_relevance,content_relevance) = compute_relevance(input_file_name,num_iterations,damping_factor,USER)
-
-#(user_num_retweets,user_average_num_retweets,user_num_retweeters,user_sum_num_retweets_retweeter) = compute_user_statistics(input_file_name)
-
-user_relevance_table = {}
-
-output_file = open(output_file_name, 'w')
-
-#output_file.write("user,influence,retweets,avg retweets,retweeters,sum retweeters\n")
-
-for user in range(0,len(user_relevance)):
-    user_relevance_table[user_relevance[user][0]] = user_relevance[user][1]
-        
-    if user_or_content == "USER":
-	if USER != user_relevance[user][0]:
-            output_file.write(str(user_relevance[user][0])+","+ str(user_relevance[user][1])+"\n")
-#             output_file.write(str(user_relevance[user][0])+","+ str(user_relevance[user][1])+","+str(user_num_retweets[user_relevance[user][0]])+","+str(user_average_num_retweets[user_relevance[user][0]])+","+str(user_num_retweeters[user_relevance[user][0]])+","+str(user_sum_num_retweets_retweeter[user_relevance[user][0]])+"\n")
-
-(content_num_retweets,content_sum_num_retweets_retweeter,content_user) = compute_content_statistics(input_file_name)
-
-#output_file.write("content,relevance,user,influence user,retweets,sum retweeters\n")
-
-if user_or_content == "CONTENT":
-    for content in range(0,len(content_relevance)):
-        output_file.write(str(content_relevance[content][0])+","+ str(content_relevance[content][1])+"\n")
-#        output_file.write(str(content_relevance[content][0])+","+ str(content_relevance[content][1])+","+content_user[content_relevance[content][0]]+","+str(user_relevance_table[content_user[content_relevance[content][0]]])+","+str(content_num_retweets[content_relevance[content][0]])+","+str(content_sum_num_retweets_retweeter[content_relevance[content][0]])+"\n")
-"""
-
 class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -368,7 +387,7 @@ def main(argv=None):
 #input_file_name = sys.argv[1] or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
     try:
         try:
-            opts, input_file_name = getopt.getopt(argv[1:], "n:d:o:a:u:h", ["input=","num-iterations=","damping-factor=","output=","analysis=","user=","help"])
+            opts, input_file_name = getopt.getopt(argv[1:], "n:d:o:a:u:l:f:h", ["num-iterations=","damping-factor=","output=","analysis=","user=","user-list=","dist-function=","help"])
         except getopt.error, msg:
             raise Usage(msg)
  
@@ -377,13 +396,15 @@ def main(argv=None):
         output_file_name = ""
         analysis = "user"
 	user = ""
+	function = "single"
+	user_list_file_name = "none"
 
         if len(input_file_name) < 1:
-	    print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [input file]"
+	    print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [-l <user list>] [-f <dist function>] [input file]"
 	    sys.exit()
 
         for opt,arg in opts:
-	    if opt in ('-n', '--num--iterations'):
+	    if opt in ('-n', '--num-iterations'):
                 num_iterations = int(arg)
 	    
             if opt in ('-d', '--damping-factor'):
@@ -394,32 +415,77 @@ def main(argv=None):
 	
 	    if opt in ('-a', '--analysis'):
 	        analysis = arg
+	    
+	    if opt in ('-u', '--user'):
+	        user = arg
+	    
+	    if opt in ('-f', '--dist-function'):
+	        function = arg
+	    
+	    if opt in ('-l', '--user-list'):
+	        user_list_file_name = arg
 	
 	    if opt in ('-h', '--help'):
-	        print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [input file]"
+	        print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [-l <user list>] [-f <dist function>] [input file]"
 	        sys.exit()
 
-	print "python profilerank.py [-n %d] [-d %lf] [-o %s] [-a %s] [-u %s][%s]" %(num_iterations, damping_factor, output_file_name, analysis, user, input_file_name[0])
-
-        (user_relevance,content_relevance) = compute_relevance(input_file_name[0],num_iterations,damping_factor,user)
+	print "python profilerank.py [-n %d] [-d %lf] [-o %s] [-a %s] [-u %s] [-l %s] [-f %s] [%s]" %(num_iterations, damping_factor, output_file_name, analysis, user, user_list_file_name, function, input_file_name[0])
     
-        user_relevance_table = {}
+        #Read the input file
+        (users,contents,UC,CU) = read_data(input_file_name[0],function)
 
-        if output_file_name != "":
-            output_file = open(output_file_name, 'w')
-        else:
-            output_file = sys.stdout
+        if user_list_file_name == "none":
+            (user_relevance,content_relevance) = compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
+    
+            user_relevance_table = {}
 
-        for u in range(0,len(user_relevance)):
-            user_relevance_table[user_relevance[u][0]] = user_relevance[u][1]
+            if output_file_name != "":
+                output_file = open(output_file_name, 'w')
+            else:
+                output_file = sys.stdout
+
+            for u in range(0,len(user_relevance)):
+                user_relevance_table[user_relevance[u][0]] = user_relevance[u][1]
         
-            if analysis == "user":
-	        if user != user_relevance[u][0]:
-                    output_file.write(str(user_relevance[u][0])+","+ str(user_relevance[u][1])+"\n")
+                if analysis == "user":
+	            if user != user_relevance[u][0]:
+                        output_file.write(str(user_relevance[u][0])+","+ str(user_relevance[u][1])+"\n")
     
-        if analysis == "content":
-            for c in range(0,len(content_relevance)):
-                output_file.write(str(content_relevance[c][0])+","+ str(content_relevance[c][1])+"\n")
+            if analysis == "content":
+                for c in range(0,len(content_relevance)):
+                    output_file.write(str(content_relevance[c][0])+","+ str(content_relevance[c][1])+"\n")
+	    
+	    if output_file_name != "":
+	        output_file.close()
+	else:
+	    user_list_file = open(user_list_file_name, 'r')
+
+	    for user in user_list_file:
+		if output_file_name != "":
+                    output_file = open(output_file_name+"_"+str(user), 'w')
+                else:
+                    output_file = sys.stdout
+
+	        user = user.rstrip()
+                (user_relevance,content_relevance) = compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
+            
+	        user_relevance_table = {}
+
+                for u in range(0,len(user_relevance)):
+                    user_relevance_table[user_relevance[u][0]] = user_relevance[u][1]
+        
+                    if analysis == "user":
+	                if user != user_relevance[u][0]:
+                            output_file.write(str(user_relevance[u][0])+","+ str(user_relevance[u][1])+"\n")
+    
+                if analysis == "content":
+                    for c in range(0,len(content_relevance)):
+                        output_file.write(str(content_relevance[c][0])+","+ str(content_relevance[c][1])+"\n")
+
+		if output_file_name != "":
+		    output_file.close()
+   
+            user_list_file.close()
     
     except Usage, err:
         print >>sys.stderr, err.msg
