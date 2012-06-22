@@ -224,7 +224,10 @@ def precision_recall_at(input_file_name,test_file_name,output_prefix):
     (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
 
     for user in users:
-       sorted_predictions = sorted(predictions[user].iteritems(), key=operator.itemgetter(1), reverse=True)
+       if user in predictions:
+           sorted_predictions = sorted(predictions[user].iteritems(), key=operator.itemgetter(1), reverse=True)
+       else:
+           sorted_predictions = []
 
        for p in range(0,len(values)):
 	    precision = 0
