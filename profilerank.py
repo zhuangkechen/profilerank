@@ -1,10 +1,13 @@
 import sys
 import operator
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, SparseEfficiencyWarning
 from numpy import array
 from scipy.spatial.distance import sqeuclidean
 import getopt
 import math
+import warnings
+
+warnings.simplefilter('ignore',SparseEfficiencyWarning)
 
 def print_matrix(matrix):
     """
@@ -260,6 +263,49 @@ def compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,fu
 
     return user_relevance,content_relevance
 
+def compute_user_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function):
+    """
+	Computes relevance and influence based on UC and CU
+    """
+    #In case there is an input user, the influence is relative to such user
+    if user != "" and user in users:
+        relevance_vector = power_method(UC,CU,num_iterations,damping_factor,len(users),users[user])
+    #Otherwise, the an overall relevance is computed
+    else:
+        relevance_vector = power_method(UC,CU,num_iterations,damping_factor,len(users))
+    
+    relevance = {}
+
+    for user in users:
+        relevance[user] = relevance_vector[0][users[user]]
+
+    user_relevance = sorted(relevance.iteritems(), key=operator.itemgetter(1), reverse=True)
+
+    return user_relevance
+
+def compute_content_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function):
+    """
+	Computes relevance and influence based on UC and CU
+    """
+    #In case there is not an input user, computes the overall relevance
+    if user == "" or user not in users:
+        relevance_vector = power_method(CU,UC,num_iterations,damping_factor,len(contents)+1)
+    #Otherwise, computes the relevance relative to a given user
+    else:
+        relevance_vector = power_method(UC,CU,num_iterations,damping_factor,len(users))
+        relevance_vector = relevance_vector * UC
+
+    relevance = {}
+
+    #Removing the effect of the dangling content in the relevance scores.
+    for content in contents:
+        relevance[content] = relevance_vector[0][contents[content]] + (float(relevance_vector[0][len(relevance_vector[0])-1]) / len(contents))
+    
+    content_relevance = sorted(relevance.iteritems(), key=operator.itemgetter(1), reverse=True)
+
+    return content_relevance
+
+
 def compute_user_statistics(input_file_name):
     """
     Computes user statistics:
@@ -387,7 +433,7 @@ def main(argv=None):
 #input_file_name = sys.argv[1] or "USAGE: python pr.py [INPUT] [NUM ITERATIONS] [DAMPING FACTOR] [OUTPUT] [USER|CONTENT]"
     try:
         try:
-            opts, input_file_name = getopt.getopt(argv[1:], "n:d:o:a:u:l:f:h", ["num-iterations=","damping-factor=","output=","analysis=","user=","user-list=","dist-function=","help"])
+            opts, input_file_name = getopt.getopt(argv[1:], "n:d:o:a:u:l:f:hs", ["num-iterations=","damping-factor=","output=","analysis=","user=","user-list=","dist-function=","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
  
@@ -398,6 +444,7 @@ def main(argv=None):
 	user = ""
 	function = "single"
 	user_list_file_name = "none"
+	silent = False
 
         if len(input_file_name) < 1:
 	    print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [-l <user list>] [-f <dist function>] [input file]"
@@ -424,18 +471,25 @@ def main(argv=None):
 	    
 	    if opt in ('-l', '--user-list'):
 	        user_list_file_name = arg
+	    
+	    if opt in ('-s', '--silent'):
+		silent = True
 	
 	    if opt in ('-h', '--help'):
 	        print "python profilerank.py [-n <num iterations>] [-d <damping factor>] [-o <output file>] [-a <user|content>] [-u <user>] [-l <user list>] [-f <dist function>] [input file]"
 	        sys.exit()
 
-	print "python profilerank.py [-n %d] [-d %lf] [-o %s] [-a %s] [-u %s] [-l %s] [-f %s] [%s]" %(num_iterations, damping_factor, output_file_name, analysis, user, user_list_file_name, function, input_file_name[0])
+	if silent == False:
+	    print "python profilerank.py [-n %d] [-d %lf] [-o %s] [-a %s] [-u %s] [-l %s] [-f %s] [%s]" %(num_iterations, damping_factor, output_file_name, analysis, user, user_list_file_name, function, input_file_name[0])
     
         #Read the input file
         (users,contents,UC,CU) = read_data(input_file_name[0],function)
 
         if user_list_file_name == "none":
-            (user_relevance,content_relevance) = compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
+	    if analysis == "user":
+                user_relevance = compute_user_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
+            else:
+	        content_relevance = compute_content_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
     
             user_relevance_table = {}
 

@@ -1,5 +1,4 @@
 import sys
-import operator
 from math import ceil
 import getopt
 
@@ -14,14 +13,13 @@ def get_valid_users_init(input_file_name, min_freq_user):
         line = line.rstrip()
 	vec = line.rsplit(',')
         user = vec[0]
-	content = vec[1]
        
         if user not in users:
             users[user] = 1
 	else:
             users[user] = users[user] + 1
 
-    input_file.close
+    input_file.close()
     
     num = 0
 
@@ -52,7 +50,7 @@ def get_valid_users(input_file_name, tweets, min_freq_user, min_freq_content):
 	    else:
                 users[user] = users[user] + 1
 
-    input_file.close
+    input_file.close()
     
     num = 0
     for user in users:
@@ -82,7 +80,7 @@ def get_valid_tweets(input_file_name,users, min_freq_content, min_freq_user):
 	    else:
 	        tweets[content] = tweets[content] + 1
 
-    input_file.close
+    input_file.close()
     
     num = 0
 
@@ -111,14 +109,13 @@ def generate_data(input_file_name, train_file_name, test_file_name, train_rate, 
         prev_num_users = num_users
 	prev_num_tweets = num_tweets
        
-    print num_users
-    print num_tweets
+#    print num_users
+#    print num_tweets
 
     input_file = open(input_file_name, 'r')
     train_file = open(train_file_name, 'w')
     test_file = open(test_file_name, 'w')
     tweet_train = {}
-    n = 0
     user_train = {}
     test_data_tmp = {}
 
@@ -159,7 +156,6 @@ def generate_data(input_file_name, train_file_name, test_file_name, train_rate, 
     test_file.close()
     input_file.close()
 
-
 class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -170,15 +166,16 @@ def main(argv=None):
 
     try:
         try:
-            opts, input_file_name = getopt.getopt(argv[1:], "t:e:r:c:u:h", ["train-file=","test-file=","train-rate=","min-freq-content=","min-freq-user=","help"])
+            opts, input_file_name = getopt.getopt(argv[1:], "t:e:r:c:u:hs", ["train-file=","test-file=","train-rate=","min-freq-content=","min-freq-user=","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
  
         train_file_name = "train.csv"
 	test_file_name = "test.csv"
 	train_rate = 0.5
-	min_freq_content = 2
-	min_freq_user = 5
+	min_freq_content = 5
+	min_freq_user = 2
+	silent = False
 
         if len(input_file_name) < 1:
 	    print "python generate_data.py [-t <train file>] [-e <test file>] [-r <train rate>] [-c <min freq content>] [-u <min freq user>] [input file]"
@@ -200,11 +197,15 @@ def main(argv=None):
 	    if opt in ('-u', '--min-freq-user'):
 	        min_freq_user = int(arg)
 	    
+	    if opt in ('-s', '--silent'):
+	        silent = True
+	    
 	    if opt in ('-h', '--help'):
 	        print "python generate_data.py [-t <train file>] [-e <test file>] [-r <train rate>] [-c <min freq content>] [-u <min freq user>] [input file]"
 	        sys.exit()
 
-	print "python generate_data.py [-t %s] [-e %s] [-r %lf] [-c %d] [-u %d] [%s]" % (train_file_name,test_file_name,train_rate,min_freq_content,min_freq_user,input_file_name)
+        if silent is False:
+	    print "python generate_data.py [-t %s] [-e %s] [-r %lf] [-c %d] [-u %d] [%s]" % (train_file_name,test_file_name,train_rate,min_freq_content,min_freq_user,input_file_name)
 
         generate_data(input_file_name[0], train_file_name, test_file_name, train_rate, min_freq_content, min_freq_user)
 
