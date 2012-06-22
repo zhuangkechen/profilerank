@@ -1,7 +1,32 @@
 import sys
 import commands
-import operator
 import getopt
+
+def read_tweets_users(test_file_name):
+    """
+        Gets test data for evaluation
+    """
+    test_file = open(test_file_name, 'r')
+    test_data = {}
+    num = 0
+    
+    for line in test_file:
+        line = line.rstrip()
+        vec = line.rsplit(',')
+	user = vec[0]
+	content = vec[1]
+
+	if user in test_data:
+	    test_data[user][content] = True
+	else:
+	    test_data[user] = {}
+	    test_data[user][content] = True
+
+	num = num + 1
+
+    test_file.close()
+
+    return test_data, num
 
 def read_users(input_file_name):
     """
@@ -110,9 +135,8 @@ def read_proximities_my_media_lite(line):
     proximities = {}
     
     vec_user = line.rsplit()
-    user = vec_user[0]
-
     proximity_values = vec_user[1]
+    
     if proximity_values != "[]":
         proximity_values = proximity_values.replace('[','')
         proximities_values = proximity_values.replace(']','')
@@ -189,14 +213,18 @@ def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
 
     #The model file stores the ouput from my media lite
     model_file_name = "models_mml/"+output_prefix+"_"+method
-        
-    print "item_recommendation --training-file=%s --test-users=%s --recommender=%s --prediction-file=%s" % (train_file_mml_name,train_users_file_name,method,model_file_name)
+   
+#    print "item_recommendation --training-file=%s --test-users=%s --recommender=%s --prediction-file=%s" % (train_file_mml_name,train_users_file_name,method,model_file_name)
+#    print "mono-2.10 ../../MyMediaLite-3.0/bin/item_recommendation --training-file=%s --test-users=%s --recommender=%s --prediction-file=%s" % (train_file_mml_name,train_users_file_name,method,model_file_name)
         
     #Running my media lite
-    c = commands.getoutput("item_recommendation --training-file="+train_file_mml_name+" --test-users="+train_users_file_name+" --recommender="+method+" --prediction-file="+model_file_name)
-    print c
+#    commands.getoutput("mono-2.10 ../../MyMediaLite-3.0/bin/item_recommendation --training-file="+train_file_mml_name+" --test-users="+train_users_file_name+" --recommender="+method+" --prediction-file="+model_file_name)
+    commands.getoutput("item_recommendation --training-file="+train_file_mml_name+" --test-users="+train_users_file_name+" --recommender="+method+" --prediction-file="+model_file_name)
     
     input_file = open(model_file_name, 'r')
+	
+    #Read tweets from user in the train file
+    (train_tweets_users,num) = read_tweets_users(train_file_name) 
     
     #Processing output from my media lite
     for line in input_file:
@@ -205,20 +233,18 @@ def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
 	vec_user = line.rsplit()
 	user = vec_user[0]
    
-	#Read tweets from user in the train file
-	train_tweets_user = read_tweets_user(train_file_name,user) 
-	
 	#Read proximities
 	proximities = read_proximities_my_media_lite(line)
 
 	for tweet in train_tweets:
-	    if tweet not in train_tweets_user:
+	    if tweet not in train_tweets_users[user]:
 	        if tweet in proximities:
 	            score = proximities[tweet]
 	        else:
 		    score = 0
 
-	        output_file.write(user+","+tweet+","+str(score)+"\n")
+	        if score > 0:
+		    output_file.write(user+","+tweet+","+str(score)+"\n")
 
     output_file.close()
 
@@ -226,7 +252,7 @@ def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
     commands.getoutput("rm "+train_users_file_name+" "+train_file_mml_name)
 
 
-def run_profile_rank(train_file_name,num_iterations,damping_factor,output_prefix,function):
+def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
     """
         Runs tweet recommendation using profilerank
     """
@@ -234,37 +260,35 @@ def run_profile_rank(train_file_name,num_iterations,damping_factor,output_prefix
     output_file = open(output_file_name,'w')
     
     #Read train users
-    train_users = read_users(train_file_name)
+    test_users = read_users(test_file_name)
 
     #Read train tweets
     train_tweets = read_tweets(train_file_name)
-
-    for user in train_users:
-        recommended_tweets = {}
 	
+    (train_tweets_users,num) = read_tweets_users(train_file_name)
+
+    for user in test_users:
 	#Read tweets from user in the train file
-	train_tweets_user = read_tweets_user(train_file_name, user)
-        num_train_tweets_user = len(train_tweets_user)
         #The model file stores the ouput from profilerank (1 user per file)
         model_file_name = "models_profilerank/"+output_prefix+"_"+str(user)
 
-        print "python ../profilerank.py -n %d -d %lf -o %s -a content -u %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user,function,train_file_name)
+#        print "python ../profilerank.py -n %d -d %lf -o %s -a content -u %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user,function,train_file_name)
     
         #Running profilerank
-        c = commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content -u "+user+" -f "+function+" "+train_file_name)
-        print c
+        commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content -u "+user+" -f "+function+" "+train_file_name)
 	
 	#Read proximities
         proximities = read_proximities(model_file_name)
 
         for tweet in train_tweets:
-	    if tweet not in train_tweets_user:
+	    if tweet not in train_tweets_users[user]:
 	        if tweet in proximities:
 	            score = proximities[tweet]
 	        else:
 		    score = 0
 	        
-		output_file.write(user+","+tweet+","+str(score)+"\n")
+		if score > 0:
+		    output_file.write(user+","+tweet+","+str(score)+"\n")
 
     output_file.close()
 
@@ -278,7 +302,7 @@ def main(argv=None):
 
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "n:d:o:f:h", ["num-iterations=","damping-factor=","dist-function=","output=","help"])
+            opts, args = getopt.getopt(argv[1:], "n:d:o:f:hs", ["num-iterations=","damping-factor=","dist-function=","output=","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
         
@@ -294,6 +318,7 @@ def main(argv=None):
 	damping_factor = 0.85
 	output_prefix = ""
 	function = "single"
+	silent = False
 
         for opt,arg in opts:
 	    if opt in ('-h', '--help'):
@@ -311,8 +336,12 @@ def main(argv=None):
 	    
 	    if opt in ('-f', '--dist-function'):
 	        function = arg
-
-	print "python run.py [-n %d] [-d %lf] [-o %s] [-f %s][%s] [%s]" % (num_iterations,damping_factor,output_prefix,function,train_file_name,test_file_name)
+	    
+	    if opt in ('-s', '--silent'):
+	        silent = True
+        
+	if silent is False:
+	    print "python run.py [-n %d] [-d %lf] [-o %s] [-f %s] [%s] [%s]" % (num_iterations,damping_factor,output_prefix,function,train_file_name,test_file_name)
 
         #Creating dirs for models
         commands.getoutput("mkdir models_mml models_profilerank")
@@ -320,7 +349,7 @@ def main(argv=None):
 	for m in my_media_lite_methods:
 	    run_my_media_lite(m, train_file_name, test_file_name,output_prefix)
 
-        run_profile_rank(train_file_name,num_iterations,damping_factor,output_prefix,function)
+        run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function)
          
     except Usage, err:
         print >>sys.stderr, err.msg

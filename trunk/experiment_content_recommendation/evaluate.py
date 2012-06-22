@@ -1,23 +1,33 @@
 import sys
-import commands
 import operator
 import getopt
 import math
 
-def read_test_data(test_file_name):
+def read_tweets_users(test_file_name):
     """
         Gets test data for evaluation
     """
     test_file = open(test_file_name, 'r')
     test_data = {}
+    num = 0
     
     for line in test_file:
         line = line.rstrip()
-        test_data[line] = 1
+        vec = line.rsplit(',')
+	user = vec[0]
+	content = vec[1]
+
+	if user in test_data:
+	    test_data[user][content] = True
+	else:
+	    test_data[user] = {}
+	    test_data[user][content] = True
+
+	num = num + 1
 
     test_file.close()
 
-    return test_data
+    return test_data, num
 
 def read_tweets(input_file_name):
     """
@@ -39,26 +49,6 @@ def read_tweets(input_file_name):
 
     return tweets
 
-def read_tweets_user(input_file_name,USER):
-    """
-        Gets set of tweets (and retweets) from a user
-    """
-    input_file = open(input_file_name, 'r')
-    tweets = {}
-
-    for line in input_file:
-        line = line.rstrip()
-        vec = line.rsplit(',')
-        user = vec[0]
-	content = vec[1]
-        
-	if user == USER:
-	    tweets[content] = user
-
-    input_file.close()
-
-    return tweets
-
 def get_users(test_file_name):
     """
         Gets users from the input file
@@ -71,7 +61,6 @@ def get_users(test_file_name):
         vec = line.rsplit(',')
 
 	user = vec[0]
-	content = vec[1]
 
 	users[user] = 1
 
@@ -81,7 +70,7 @@ def get_users(test_file_name):
     
 def read_predictions(input_file_name):
     """
-        Gets the predictions for USER in the input file
+        Gets the predictions in the input file
     """
     input_file = open(input_file_name, 'r')
     predictions = {}
@@ -100,9 +89,9 @@ def read_predictions(input_file_name):
 
     return predictions
 
-def read_predictions_user(input_file_name,USER):
+def read_predictions_users(input_file_name):
     """
-        Gets the predictions for USER in the input file
+        Gets the predictions in the input file
     """
     input_file = open(input_file_name, 'r')
     predictions = {}
@@ -115,12 +104,16 @@ def read_predictions_user(input_file_name,USER):
 	content = vec[1]
 	score = vec[2]
         
-	if user == USER:
-	    predictions[content] = float(score)
+	if user in predictions:
+	    predictions[user][content] = float(score)
+	else:
+	    predictions[user] = {}
+	    predictions[user][content] = float(score)
 
     input_file.close()
 
     return predictions
+
 
 def area(roc_curve_file_name):
     """
@@ -157,10 +150,9 @@ def ROC(input_file_name, test_file_name, output_prefix):
     output_file = open(output_file_name,'w')
     tweets = read_tweets(test_file_name)
     users = get_users(test_file_name)
-    test_data = read_test_data(test_file_name)
+    (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
     num_users = len(users)
     num_tweets = len(tweets)
-    num_test_tweets_with_repetitions = len(test_data)
 
     total_positive = num_test_tweets_with_repetitions
     total_negative = num_users * num_tweets - num_test_tweets_with_repetitions
@@ -175,6 +167,8 @@ def ROC(input_file_name, test_file_name, output_prefix):
     start = False
                 
     output_file.write("0.0	0.0\n")
+    prev_score = 0
+    score = 0
 
     for p in range(0,len(sorted_predictions)):
 	prediction = sorted_predictions[p][0]
@@ -195,7 +189,7 @@ def ROC(input_file_name, test_file_name, output_prefix):
 	    prev_score = score
 	    start = True
 
-	    if prediction in test_data:
+	    if user in test_data and content in test_data[user]:
 	        num_true_positives = num_true_positives + 1
 	    else:
 	        num_false_positives = num_false_positives + 1
@@ -212,77 +206,50 @@ def ROC(input_file_name, test_file_name, output_prefix):
     AUC = area(output_file_name)
     print "AUC = %lf" % AUC
 
-def recall_at(input_file_name,test_file_name,output_prefix):
+def precision_recall_at(input_file_name,test_file_name,output_prefix):
     """
-        Computes the recall @ 5, 10, 15, and 20
+        Computes the precision and recall @ 5, 10, 15, and 20
     """
-    output_file_name = output_prefix+"_recall_at.dat"
-    output_file = open(output_file_name,'w')
+    precision_file_name = output_prefix+"_precision_at.dat"
+    recall_file_name = output_prefix+"_recall_at.dat"
+    precision_file = open(precision_file_name,'w')
+    recall_file = open(recall_file_name,'w')
     values = [5, 10, 15, 20]
+    precisions = [0, 0, 0, 0]
     recalls = [0, 0, 0, 0]
     num_users = [0, 0, 0, 0]
 
     users = get_users(test_file_name)
-    tweets = read_tweets(test_file_name)
+    predictions = read_predictions_users(input_file_name)
+    (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
 
     for user in users:
-       predictions = read_predictions_user(input_file_name,user)
-       tweets_user = read_tweets_user(test_file_name,user)
-
-       sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=True)
-
-       for p in range(0,len(values)):
-	   recall = 0
-	   num_users[p] = num_users[p] + 1
-
-	   for i in range(0,values[p]):
-	      if sorted_predictions[i][0] in tweets_user:
-                  recall = recall + 1
-
-	   recall = float(recall) / len(tweets_user)
-	   recalls[p] = float(recalls[p]) + recall
-
-    for p in range(0,len(values)):
-        recalls[p] = float(recalls[p]) / num_users[p]
-        output_file.write(str(values[p])+"	"+str(recalls[p])+"	"+str(num_users[p])+"\n")
-    
-    output_file.close()
-
-def precision_at(input_file_name,test_file_name,output_prefix):
-    """
-        Computes the precision @ 5, 10, 15, and 20
-    """
-    output_file_name = output_prefix+"_precision_at.dat"
-    output_file = open(output_file_name,'w')
-    values = [5, 10, 15, 20]
-    precisions = [0, 0, 0, 0]
-    num_users = [0, 0, 0, 0]
-
-    users = get_users(test_file_name)
-    tweets = read_tweets(test_file_name)
-
-    for user in users:
-       predictions = read_predictions_user(input_file_name,user)
-       tweets_user = read_tweets_user(test_file_name,user)
-
-       sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=True)
+       sorted_predictions = sorted(predictions[user].iteritems(), key=operator.itemgetter(1), reverse=True)
 
        for p in range(0,len(values)):
 	    precision = 0
-	    num_users[p] = num_users[p] + 1
+	    recall = 0
+	    
+	    if len(test_data[user] >= values[p]):
+	        num_users[p] = num_users[p] + 1
 
-	    for i in range(0,values[p]):
-	       if sorted_predictions[i][0] in tweets_user:
-                   precision = precision + 1
+	        for i in range(0,values[p]):
+	            if i < len(sorted_predictions) and sorted_predictions[i][0] in test_data[user]:
+                        precision = precision + 1
 
-	    precision = float(precision) / values[p]
-	    precisions[p] = float(precisions[p]) + precision
+	        precision = float(precision) / values[p]
+	        precisions[p] = float(precisions[p]) + precision
+	        recall = float(recall) / len(test_data[user])
+	        recalls[p] = float(recalls[p]) + recall
 
     for p in range(0,len(values)):
         precisions[p] = float(precisions[p]) / num_users[p]
-        output_file.write(str(values[p])+"	"+str(precisions[p])+"\n")
+        precision_file.write(str(values[p])+"	"+str(precisions[p])+"	"+str(num_users[p])+"\n")
+        recalls[p] = float(recalls[p]) / num_users[p]
+        recall_file.write(str(values[p])+"	"+str(recalls[p])+"	"+str(num_users[p])+"\n")
     
-    output_file.close()
+    precision_file.close()
+    recall_file.close()
 
 def precision_recall(input_file_name,test_file_name,output_prefix):
     """
@@ -291,8 +258,7 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
     output_file_name = output_prefix+"_precision_recall.dat"
     output_file = open(output_file_name,'w')
     
-    test_data = read_test_data(test_file_name)
-    num_test_tweets_with_repetitions = len(test_data)
+    (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
     users = get_users(test_file_name)
     tweets = read_tweets(test_file_name)
     
@@ -307,6 +273,8 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
     break_even_recall = 0.0
     precisions = []
     recalls = []
+    prev_score = 0
+    score = 0
 
     for p in range(0,len(sorted_predictions)):
 	prediction = sorted_predictions[p][0]
@@ -334,7 +302,7 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
 	    prev_score = score
 	    start = True
 
-	    if prediction in test_data:
+	    if user in test_data and content in test_data[user]:
 	        num_matches = num_matches + 1
 
     precision = float(num_matches) / total_precision
@@ -368,8 +336,7 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     output_file_name = output_prefix+"_recall_fallout.dat"
     output_file = open(output_file_name,'w')
     
-    test_data = read_test_data(test_file_name)
-    num_test_tweets_with_repetitions = len(test_data)
+    (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
     users = get_users(test_file_name)
     tweets = read_tweets(test_file_name)
     num_users = len(users)
@@ -383,6 +350,8 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     num_matches = 0
     num_errors = 0
     start = False
+    prev_score = 0
+    score = 0
     
     for p in range(0,len(sorted_predictions)):
 	prediction = sorted_predictions[p][0]
@@ -406,7 +375,7 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
 	    prev_score = score
 	    start = True
 
-	    if prediction in test_data:
+	    if user in test_data and content in test_data[user]:
 	        num_matches = num_matches + 1
 	    else:
 	        num_errors = num_errors + 1
@@ -429,7 +398,7 @@ def main(argv=None):
 
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "o:h", ["output=","help"])
+            opts, args = getopt.getopt(argv[1:], "o:hs", ["output=","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
         
@@ -440,6 +409,7 @@ def main(argv=None):
 	input_file_name = args[0]
 	test_file_name = args[1]
 	output_prefix = ""
+	silent = False
 
         for opt,arg in opts:
 	    if opt in ('-h', '--help'):
@@ -448,12 +418,15 @@ def main(argv=None):
 	    
 	    if opt in ('-o', '--output'):
 	        output_prefix = arg
+	    
+	    if opt in ('-s', '--silent'):
+	        silent = True
 
-	print "python evaluate.py [-o %s] [%s] [%s]" % (output_prefix,input_file_name,test_file_name)
+        if silent is False:
+	    print "python evaluate.py [-o %s] [%s] [%s]" % (output_prefix,input_file_name,test_file_name)
 
 	ROC(input_file_name, test_file_name, output_prefix)
-	precision_at(input_file_name, test_file_name, output_prefix)
-	recall_at(input_file_name, test_file_name, output_prefix)
+	precision_recall_at(input_file_name, test_file_name, output_prefix)
 	precision_recall(input_file_name, test_file_name, output_prefix)
         recall_fallout(input_file_name,test_file_name,output_prefix)
 
