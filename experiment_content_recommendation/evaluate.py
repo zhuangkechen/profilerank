@@ -230,7 +230,7 @@ def precision_recall_at(input_file_name,test_file_name,output_prefix):
 	    precision = 0
 	    recall = 0
 	    
-	    if len(test_data[user] >= values[p]):
+	    if len(test_data[user]) >= values[p]:
 	        num_users[p] = num_users[p] + 1
 
 	        for i in range(0,values[p]):
