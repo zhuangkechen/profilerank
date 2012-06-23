@@ -486,6 +486,8 @@ def main(argv=None):
         (users,contents,UC,CU) = read_data(input_file_name[0],function)
 
         if user_list_file_name == "none":
+	    user_relevance = []
+	    content_relevance = []
 	    if analysis == "user":
                 user_relevance = compute_user_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
             else:
