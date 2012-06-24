@@ -389,7 +389,11 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     
     recall = float(num_matches) / total_recall
     fallout = float(num_errors) / total_fallout
-    recall_fallout = float(recall) / fallout
+    
+    if fallout > 0:
+        recall_fallout = float(recall) / fallout
+    else:
+        recall_fallout = 0
 		
     output_file.write(str(prev_score)+"	"+str(recall_fallout)+"	"+str(recall)+"	"+str(fallout)+"\n")
 	    
