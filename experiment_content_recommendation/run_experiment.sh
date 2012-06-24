@@ -26,7 +26,7 @@ do
 	for method in ${my_media_lite_methods[@]}
 	do
 		echo "Evaluating $method"
-		python evaluate.py -o $database-$method $database\_$method.csv test-$database.csv -s
+		python evaluate.py -o $database-$method $database-$method.csv test-$database.csv -s
 	done
 	
 done
