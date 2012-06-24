@@ -308,7 +308,11 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
 	    if user in test_data and content in test_data[user]:
 	        num_matches = num_matches + 1
 
-    precision = float(num_matches) / total_precision
+    if total_precision > 0:
+        precision = float(num_matches) / total_precision
+    else:
+       precision = 0
+    
     recall = float(num_matches) / total_recall
     
     precisions.append(precision)
