@@ -233,12 +233,12 @@ def precision_recall_at(input_file_name,test_file_name,output_prefix):
 	    precision = 0
 	    recall = 0
 	    
-	    if len(test_data[user]) >= values[p]:
-	        num_users[p] = num_users[p] + 1
+	    num_users[p] = num_users[p] + 1
 
-	        for i in range(0,values[p]):
-	            if i < len(sorted_predictions) and sorted_predictions[i][0] in test_data[user]:
-                        precision = precision + 1
+	    for i in range(0,values[p]):
+	        if i < len(sorted_predictions) and sorted_predictions[i][0] in test_data[user]:
+                    precision = precision + 1
+		    recall = recall + 1
 
 	        precision = float(precision) / values[p]
 	        precisions[p] = float(precisions[p]) + precision
@@ -350,7 +350,7 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     num_tweets = len(tweets)
     
     predictions = read_predictions(input_file_name)
-    sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=True)
+    sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=False)
 
     total_recall = num_test_tweets_with_repetitions
     total_fallout = (num_users * num_tweets) - num_test_tweets_with_repetitions

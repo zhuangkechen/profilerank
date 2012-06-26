@@ -6,7 +6,7 @@ databases=("fiat")
 train_rate=0.5
 min_freq_content=2
 min_freq_user=5
-num_iterations_profilerank=1
+num_iterations_profilerank=10
 damping_factor=0.85
 my_media_lite_methods=("BPRMF" "ItemKNN" "Random" "UserKNN" "WRMF" "MostPopular" "WeightedItemKNN" "WeightedUserKNN" "Zero" "SoftMarginRankingMF" "WeightedBPRMF")
 
@@ -26,7 +26,7 @@ do
 	for method in ${my_media_lite_methods[@]}
 	do
 		echo "Evaluating $method"
-		python evaluate.py -o $database-$method $database-$method.csv test-$database.csv -s
+		python evaluate.py -o $database-$method $database\_$method.csv test-$database.csv -s
 	done
 	
 done

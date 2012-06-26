@@ -39,7 +39,11 @@ def read_users(input_file_name):
         line = line.rstrip()
         vec = line.rsplit(',')
         user = vec[0]
-        users[user] = 1
+        
+	if user not in users:
+	    users[user] = 1
+	else:
+	    users[user] = users[user] + 1
 
     input_file.close()
 
@@ -122,7 +126,7 @@ def read_proximities(input_file_name):
         user = vec[0]
 	proximity = vec[1]
 
-        proximities[user] = proximity
+        proximities[user] = float(proximity)
 
     input_file.close()
 
@@ -146,7 +150,7 @@ def read_proximities_my_media_lite(line):
 	    pair = proximities_vec[i].split(':')
 	    content = pair[0]
 	    value = pair[1]
-	    proximities[content] = value
+	    proximities[content] = float(value)
 
     return proximities
     
@@ -258,9 +262,15 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
     """
     output_file_name = output_prefix+"_profilerank.csv"
     output_file = open(output_file_name,'w')
+    user_list_file_name = output_prefix+"_user_list"
+    user_list = open(user_list_file_name, 'w')
     
     #Read train users
     test_users = read_users(test_file_name)
+    train_users = read_users(train_file_name)
+        
+    #The model file stores the ouput from profilerank (1 user per file)
+    model_file_name = "models_profilerank/"+output_prefix
 
     #Read train tweets
     train_tweets = read_tweets(train_file_name)
@@ -268,15 +278,17 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
     (train_tweets_users,num) = read_tweets_users(train_file_name)
 
     for user in test_users:
+        user_list.write(user+"\n")
+
+    user_list.close()
+
+#    print "python ../profilerank.py -n %d -d %lf -o %s -a content -l %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user_list_file_name,function,train_file_name)
+    commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content -l "+user_list_file_name+" -f "+function+" "+train_file_name)
+	
+    for user in test_users:
 	#Read tweets from user in the train file
-        #The model file stores the ouput from profilerank (1 user per file)
         model_file_name = "models_profilerank/"+output_prefix+"_"+str(user)
 
-#        print "python ../profilerank.py -n %d -d %lf -o %s -a content -u %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user,function,train_file_name)
-    
-        #Running profilerank
-        commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content -u "+user+" -f "+function+" "+train_file_name)
-	
 	#Read proximities
         proximities = read_proximities(model_file_name)
 
@@ -286,11 +298,14 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
 	            score = proximities[tweet]
 	        else:
 		    score = 0
-	        
+		
+		score = score * float(train_users[user])
+
 		if score > 0:
 		    output_file.write(user+","+tweet+","+str(score)+"\n")
 
     output_file.close()
+    c = commands.getoutput("rm "+str(user_list_file_name))
 
 class Usage(Exception):
     def __init__(self, msg):
