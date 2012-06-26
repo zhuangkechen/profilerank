@@ -2,7 +2,6 @@ import sys
 import operator
 from scipy.sparse import coo_matrix, SparseEfficiencyWarning
 from numpy import array
-from scipy.spatial.distance import sqeuclidean
 import getopt
 import math
 import warnings
@@ -517,12 +516,12 @@ def main(argv=None):
 	    user_list_file = open(user_list_file_name, 'r')
 
 	    for user in user_list_file:
+	        user = user.rstrip()
 		if output_file_name != "":
                     output_file = open(output_file_name+"_"+str(user), 'w')
                 else:
                     output_file = sys.stdout
 
-	        user = user.rstrip()
                 (user_relevance,content_relevance) = compute_relevance(users,contents,UC,CU,num_iterations,damping_factor,user,function)
             
 	        user_relevance_table = {}
