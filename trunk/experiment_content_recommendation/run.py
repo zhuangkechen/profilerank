@@ -199,22 +199,37 @@ def create_train_file_mml(train_file_mml_name,train_file_name):
     input_file.close()
     train_file_mml.close()
 
-def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
+def generate_my_media_lite_input_files(train_file_name,test_file_name,output_prefix):
+    """
+        Generates the input files required by my_media_lite
+    """
+    #Create file with training users
+    train_users_file_name = output_prefix+"_users_mml.txt"
+    create_user_file_name(train_users_file_name,test_file_name)
+    
+    #Create file with training data
+    train_file_mml_name = output_prefix+"_train_mml.csv"
+    create_train_file_mml(train_file_mml_name,train_file_name)
+   
+def remove_my_media_lite_files(output_prefix):
+    """
+        Removes the input files required by my_media_lite
+    """
+    #removing temporary files
+    train_users_file_name = output_prefix+"_users_mml.txt"
+    train_file_mml_name = output_prefix+"_train_mml.csv"
+    commands.getoutput("rm "+train_users_file_name+" "+train_file_mml_name)
+
+def run_my_media_lite(method,train_file_name,output_prefix):
     """
         Runs tweet recommendation using 'method' from the my_media_lite library
     """
     #Create file with training users
-    train_users_file_name = "users_mml.txt"
-    create_user_file_name(train_users_file_name,test_file_name)
+    train_users_file_name = output_prefix+"_users_mml.txt"
     
     #Create file with training data
-    train_tweets = read_tweets(train_file_name)
-    train_file_mml_name = "train_mml.csv"
-    create_train_file_mml(train_file_mml_name,train_file_name)
+    train_file_mml_name = output_prefix+"_train_mml.csv"
    
-    output_file_name = output_prefix+"_"+ method + ".csv"
-    output_file = open(output_file_name,'w')
-
     #The model file stores the ouput from my media lite
     model_file_name = "models_mml/"+output_prefix+"_"+method
    
@@ -229,6 +244,11 @@ def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
 	
     #Read tweets from user in the train file
     (train_tweets_users,num) = read_tweets_users(train_file_name) 
+    
+    tmp_file_name = output_prefix+"_"+method+".tmp"
+    output_file = open(tmp_file_name,'w')
+
+    train_tweets = read_tweets(train_file_name)
     
     #Processing output from my media lite
     for line in input_file:
@@ -252,17 +272,17 @@ def run_my_media_lite(method,train_file_name,test_file_name,output_prefix):
 
     output_file.close()
 
-    #removing temporary files
-    commands.getoutput("rm "+train_users_file_name+" "+train_file_mml_name)
 
+    #Sorting the output file
+    output_file_name = output_prefix+"_"+ method + ".csv"
+    commands.getoutput("sort -t, -k3,3gr "+tmp_file_name+" > "+output_file_name)
+    commands.getoutput("rm "+tmp_file_name)
 
 def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
     """
         Runs tweet recommendation using profilerank
     """
-    output_file_name = output_prefix+"_profilerank.csv"
-    output_file = open(output_file_name,'w')
-    user_list_file_name = output_prefix+"_user_list"
+    user_list_file_name = output_prefix+"_user_list.tmp"
     user_list = open(user_list_file_name, 'w')
     
     #Read train users
@@ -284,6 +304,9 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
 
 #    print "python ../profilerank.py -n %d -d %lf -o %s -a content -l %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user_list_file_name,function,train_file_name)
     commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content -l "+user_list_file_name+" -f "+function+" "+train_file_name)
+    
+    tmp_file_name = output_prefix+"_profilerank.tmp"
+    output_file = open(tmp_file_name,'w')
 	
     for user in test_users:
 	#Read tweets from user in the train file
@@ -305,7 +328,12 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
 		    output_file.write(user+","+tweet+","+str(score)+"\n")
 
     output_file.close()
-    c = commands.getoutput("rm "+str(user_list_file_name))
+    commands.getoutput("rm "+str(user_list_file_name))
+    
+    #Sorting the output file
+    output_file_name = output_prefix+"_profilerank.csv"
+    commands.getoutput("sort -t, -k3,3gr "+tmp_file_name+" > "+output_file_name)
+    commands.getoutput("rm "+tmp_file_name)
 
 class Usage(Exception):
     def __init__(self, msg):
@@ -361,8 +389,14 @@ def main(argv=None):
         #Creating dirs for models
         commands.getoutput("mkdir models_mml models_profilerank")
 
+        #Creating input files for my_media_lite methods
+	generate_my_media_lite_input_files(train_file_name,test_file_name,output_prefix)
+	
 	for m in my_media_lite_methods:
-	    run_my_media_lite(m, train_file_name, test_file_name,output_prefix)
+	    run_my_media_lite(m, train_file_name,output_prefix)
+        
+	#Removing input files for my_media_lite methods
+        remove_my_media_lite_files(output_prefix)
 
         run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function)
          

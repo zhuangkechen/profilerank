@@ -2,6 +2,7 @@ import sys
 import operator
 import getopt
 import math
+import commands
 
 def read_tweets_users(test_file_name):
     """
@@ -84,6 +85,34 @@ def read_predictions(input_file_name):
 	score = vec[2]
         
 	predictions[user+","+content] = float(score)
+
+    input_file.close()
+
+    return predictions
+
+def read_top_predictions_users(input_file_name, num):
+    """
+        Gets the predictions in the input file, the input file is assumed to be sorted
+	w.r.t. score
+    """
+    input_file = open(input_file_name, 'r')
+    predictions = {}
+    
+    for line in input_file:
+        line = line.rstrip()
+        vec = line.rsplit(',')
+
+	user = vec[0]
+	content = vec[1]
+	score = vec[2]
+        
+	if user in predictions:
+            #Max number of tuples for a user is num
+	    if len(predictions[user]) < num:
+	        predictions[user][content] = float(score)
+	else:
+	    predictions[user] = {}
+	    predictions[user][content] = float(score)
 
     input_file.close()
 
@@ -208,7 +237,8 @@ def ROC(input_file_name, test_file_name, output_prefix):
 
 def precision_recall_at(input_file_name,test_file_name,output_prefix):
     """
-        Computes the precision and recall @ 5, 10, 15, and 20
+        Computes the precision and recall @ 5, 10, 15, and 20, the input file is assumed
+	to be sorted w.r.t. score
     """
     precision_file_name = output_prefix+"_precision_at.dat"
     recall_file_name = output_prefix+"_recall_at.dat"
@@ -220,7 +250,7 @@ def precision_recall_at(input_file_name,test_file_name,output_prefix):
     num_users = [0, 0, 0, 0]
 
     users = get_users(test_file_name)
-    predictions = read_predictions_users(input_file_name)
+    predictions = read_top_predictions_users(input_file_name, 20)
     (test_data,num_test_tweets_with_repetitions) = read_tweets_users(test_file_name)
 
     for user in users:
@@ -265,9 +295,6 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
     users = get_users(test_file_name)
     tweets = read_tweets(test_file_name)
     
-    predictions = read_predictions(input_file_name)
-    sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=True)
-
     total_precision = 0
     total_recall = num_test_tweets_with_repetitions
     num_matches = 0
@@ -279,14 +306,15 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
     prev_score = 0
     score = 0
 
-    for p in range(0,len(sorted_predictions)):
-	prediction = sorted_predictions[p][0]
-	score = sorted_predictions[p][1]
+    input_file = open(input_file_name, 'r')
 
-        vec = prediction.rsplit(',')
+    for line in input_file:
+        line = line.rstrip()
+	vec = line.rsplit(',')
 
 	user = vec[0]
 	content = vec[1]
+	score = vec[1]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
@@ -349,9 +377,6 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     num_users = len(users)
     num_tweets = len(tweets)
     
-    predictions = read_predictions(input_file_name)
-    sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=False)
-
     total_recall = num_test_tweets_with_repetitions
     total_fallout = (num_users * num_tweets) - num_test_tweets_with_repetitions
     num_matches = 0
@@ -360,14 +385,17 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     prev_score = 0
     score = 0
     
-    for p in range(0,len(sorted_predictions)):
-	prediction = sorted_predictions[p][0]
-	score = sorted_predictions[p][1]
+    #Re-ordering the scores
+    commands.getoutput("sort -t, -k3,3g "+input_file_name+" > recall_fallout.tmp")
+    input_file = open("recall_fallout.tmp", 'r')
 
-        vec = prediction.rsplit(',')
+    for line in input_file:
+        line = line.rstrip()
+	vec = line.rsplit(',')
 
 	user = vec[0]
 	content = vec[1]
+	score = vec[1]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
@@ -398,6 +426,8 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     output_file.write(str(prev_score)+"	"+str(recall_fallout)+"	"+str(recall)+"	"+str(fallout)+"\n")
 	    
     output_file.close()
+    
+    commands.getoutput("rm recall_fallout.tmp")
 
 class Usage(Exception):
     def __init__(self, msg):
