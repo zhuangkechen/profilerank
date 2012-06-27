@@ -186,9 +186,6 @@ def ROC(input_file_name, test_file_name, output_prefix):
     total_positive = num_test_tweets_with_repetitions
     total_negative = num_users * num_tweets - num_test_tweets_with_repetitions
 
-    predictions = read_predictions(input_file_name)
-
-    sorted_predictions = sorted(predictions.iteritems(), key=operator.itemgetter(1), reverse=True)
     
     num_false_positives = 0
     num_true_positives = 0
@@ -199,14 +196,15 @@ def ROC(input_file_name, test_file_name, output_prefix):
     prev_score = 0
     score = 0
 
-    for p in range(0,len(sorted_predictions)):
-	prediction = sorted_predictions[p][0]
-	score = sorted_predictions[p][1]
+    input_file = open(input_file_name, 'r')
 
-        vec = prediction.rsplit(',')
+    for line in input_file:
+        line = line.rstrip()
+	vec = line.rsplit(',')
 
 	user = vec[0]
 	content = vec[1]
+	score = vec[1]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
