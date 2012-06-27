@@ -204,7 +204,7 @@ def ROC(input_file_name, test_file_name, output_prefix):
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[1]
+	score = vec[2]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
@@ -312,7 +312,7 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[1]
+	score = vec[2]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
@@ -393,7 +393,7 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[1]
+	score = vec[2]
 	
 	if user in users and content in tweets:
 	    if start and prev_score != score:
