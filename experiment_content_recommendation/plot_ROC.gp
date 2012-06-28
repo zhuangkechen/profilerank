@@ -9,4 +9,5 @@ set yrange[-0.01:1.01]
 set xtics 0.2
 set ytics 0.2
 set key bottom
-plot "profile_rank_ROC.dat" title "profilerank" with lines lw 5 lc 3, "WIKNN_ROC.dat"  title "WIKNN" with lines lw 5 lc 4
+plot "_ROC.dat" using 1:2 title "profilerank" with linespoints lt 1 lw 4 pt 4 ps 1
+#, "WIKNN_ROC.dat"  title "WIKNN" with lines lw 5 lc 4

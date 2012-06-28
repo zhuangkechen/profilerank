@@ -1,14 +1,14 @@
 #!/bin/bash
 
 databases_dir='../../data/'
-databases=("fiat" "brasileirao" "elections") 
-#databases=("fiat") 
+#databases=("fiat" "brasileirao" "elections") 
+databases=("fiat") 
 train_rate=0.5
 min_freq_content=("2" "5" "5")
 min_freq_user=("5" "10" "10")
 num_iterations_profilerank=10
 damping_factor=0.85
-my_media_lite_methods=("BPRMF" "ItemKNN" "Random" "UserKNN" "WRMF" "MostPopular" "WeightedItemKNN" "WeightedUserKNN" "Zero" "SoftMarginRankingMF" "WeightedBPRMF")
+my_media_lite_methods=("BPRMF" "Random" "UserKNN" "WRMF" "MostPopular" "WeightedItemKNN" "WeightedUserKNN" "SoftMarginRankingMF" "WeightedBPRMF")
 
 d=0
 
