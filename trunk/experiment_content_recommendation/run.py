@@ -349,7 +349,7 @@ def main(argv=None):
         except getopt.error, msg:
             raise Usage(msg)
         
-	my_media_lite_methods = ["BPRMF", "ItemKNN", "Random", "UserKNN", "WRMF", "MostPopular", "WeightedItemKNN", "WeightedUserKNN", "Zero", "SoftMarginRankingMF", "WeightedBPRMF"]
+	my_media_lite_methods = ["BPRMF", "Random", "UserKNN", "WRMF", "MostPopular", "WeightedItemKNN", "WeightedUserKNN", "SoftMarginRankingMF", "WeightedBPRMF"]
 
         if len(args) < 2:
 	    print "python run.py [-n <num iterations profilerank>] [-d <damping factor profilerank>] [-o <output prefix>] [-f <dist function>] [<train file>] [<test file>]"

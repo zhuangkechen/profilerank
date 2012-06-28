@@ -2,7 +2,6 @@ import sys
 import operator
 import getopt
 import math
-import commands
 
 def read_tweets_users(test_file_name):
     """
@@ -185,18 +184,16 @@ def ROC(input_file_name, test_file_name, output_prefix):
 
     total_positive = num_test_tweets_with_repetitions
     total_negative = num_users * num_tweets - num_test_tweets_with_repetitions
-
     
     num_false_positives = 0
     num_true_positives = 0
     
-    start = False
-                
     output_file.write("0.0	0.0\n")
-    prev_score = 0
-    score = 0
+    diff = float(0.01)
 
     input_file = open(input_file_name, 'r')
+    prev_fpr = -1
+    prev_tpr = -1
 
     for line in input_file:
         line = line.rstrip()
@@ -207,25 +204,20 @@ def ROC(input_file_name, test_file_name, output_prefix):
 	score = vec[2]
 	
 	if user in users and content in tweets:
-	    if start and prev_score != score:
-	        tpr = float(num_true_positives) / total_positive
-	        fpr = float(num_false_positives) / total_negative
-            
-                output_file.write(str(fpr)+"	"+str(tpr)+"\n")
-	
-	    prev_score = score
-	    start = True
-
 	    if user in test_data and content in test_data[user]:
 	        num_true_positives = num_true_positives + 1
 	    else:
 	        num_false_positives = num_false_positives + 1
 
+	    tpr = float(num_true_positives) / total_positive
+	    fpr = float(num_false_positives) / total_negative
+            
+	    if math.fabs(tpr - prev_tpr) >= diff or math.fabs(fpr - prev_fpr) >= diff:
+                output_file.write(str(fpr)+"	"+str(tpr)+"\n")
+	        prev_tpr = tpr
+	        prev_fpr = fpr
+	    
     
-    tpr = float(num_true_positives) / total_positive
-    fpr = float(num_false_positives) / total_negative
-    output_file.write(str(fpr)+"	"+str(tpr)+"\n")
-
     output_file.write("1	1\n")
     output_file.close()
 
@@ -296,13 +288,11 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
     total_precision = 0
     total_recall = num_test_tweets_with_repetitions
     num_matches = 0
-    start = False
     break_even_precision = 1.0
     break_even_recall = 0.0
     precisions = []
     recalls = []
-    prev_score = 0
-    score = 0
+    diff = 0.01
 
     input_file = open(input_file_name, 'r')
 
@@ -312,38 +302,28 @@ def precision_recall(input_file_name,test_file_name,output_prefix):
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[2]
 	
 	if user in users and content in tweets:
-	    if start and prev_score != score:
-	        precision = float(num_matches) / total_precision
-		recall = float(num_matches) / total_recall
-
-		if num_matches > 0 and math.fabs(precision - recall) < math.fabs(break_even_precision - break_even_recall):
-		    break_even_precision = precision
-		    break_even_recall = recall
-	            
-		    precisions.append(precision)
-		    recalls.append(recall)
-                
 	    total_precision = total_precision + 1
-
-	    prev_score = score
-	    start = True
-
+	    
 	    if user in test_data and content in test_data[user]:
 	        num_matches = num_matches + 1
+	    
+	    precision = float(num_matches) / total_precision
+	    
+	    recall = float(num_matches) / total_recall
 
-    if total_precision > 0:
-        precision = float(num_matches) / total_precision
-    else:
-       precision = 0
-    
-    recall = float(num_matches) / total_recall
-    
-    precisions.append(precision)
-    recalls.append(recall)
-    
+	    if num_matches > 0 and math.fabs(precision - recall) < math.fabs(break_even_precision - break_even_recall):
+		break_even_precision = precision
+		break_even_recall = recall
+	            
+	    if len(precisions) == 0 or len(recalls) == 0 or math.fabs(precision - precisions[len(precisions)-1]) >= diff or math.fabs(recall - recalls[len(recalls)-1]) >= diff:
+	        precisions.append(precision)
+	        recalls.append(recall)
+
+	    if recall >= 0.5:
+	        break
+                
     for i in range(0,len(recalls)):
         precision = 0
 
@@ -379,35 +359,43 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     total_fallout = (num_users * num_tweets) - num_test_tweets_with_repetitions
     num_matches = 0
     num_errors = 0
-    start = False
-    prev_score = 0
-    score = 0
-    
-    #Re-ordering the scores
-    commands.getoutput("sort -t, -k3,3g "+input_file_name+" > recall_fallout.tmp")
-    input_file = open("recall_fallout.tmp", 'r')
+    num_predictions = 0
+    #Counting predictions
+    input_file = open(input_file_name, 'r')
 
     for line in input_file:
+        num_predictions = num_predictions + 1
+
+    input_file.close()
+    
+    input_file = open(input_file_name, 'r')
+
+    bin_size = 0.01
+    n_bin = 0
+    n = 0
+    
+    for line in input_file:
+        n = n + 1
+	n_bin = n_bin + 1
         line = line.rstrip()
 	vec = line.rsplit(',')
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[2]
 	
 	if user in users and content in tweets:
-	    if start and prev_score != score:
+	    if float(bin_size * num_predictions) <= n_bin:
 		recall = float(num_matches) / total_recall
 		fallout = float(num_errors) / total_fallout
 		
 		if fallout > 0:
 		    recall_fallout = float(recall) / fallout
-                
-		    output_file.write(str(prev_score)+"	"+str(recall_fallout)+"	"+str(recall)+"	"+str(fallout)+"\n")
-	    
-	    prev_score = score
-	    start = True
+		    x = 100.0 * float(n) / num_predictions
+                    
+		    output_file.write(str(x)+"	"+str(recall_fallout)+"\n")
 
+		    n_bin = 0
+	    
 	    if user in test_data and content in test_data[user]:
 	        num_matches = num_matches + 1
 	    else:
@@ -421,12 +409,12 @@ def recall_fallout(input_file_name,test_file_name,output_prefix):
     else:
         recall_fallout = 0
 		
-    output_file.write(str(prev_score)+"	"+str(recall_fallout)+"	"+str(recall)+"	"+str(fallout)+"\n")
+    n = n + 1
+    x = 100.0 * float(n) / num_predictions
+    output_file.write(str(x)+"	"+str(recall_fallout)+"\n")
 	    
     output_file.close()
     
-    commands.getoutput("rm recall_fallout.tmp")
-
 class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg
