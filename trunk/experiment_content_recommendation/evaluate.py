@@ -201,7 +201,6 @@ def ROC(input_file_name, test_file_name, output_prefix):
 
 	user = vec[0]
 	content = vec[1]
-	score = vec[2]
 	
 	if user in users and content in tweets:
 	    if user in test_data and content in test_data[user]:
@@ -260,10 +259,11 @@ def precision_recall_at(input_file_name,test_file_name,output_prefix):
                     precision = precision + 1
 		    recall = recall + 1
 
-	        precision = float(precision) / values[p]
-	        precisions[p] = float(precisions[p]) + precision
-	        recall = float(recall) / len(test_data[user])
-	        recalls[p] = float(recalls[p]) + recall
+	    precision = float(precision) / values[p]
+	    precisions[p] = float(precisions[p]) + precision
+	    recall = float(recall) / len(test_data[user])
+	    recalls[p] = float(recalls[p]) + recall
+
 
     for p in range(0,len(values)):
         precisions[p] = float(precisions[p]) / num_users[p]
