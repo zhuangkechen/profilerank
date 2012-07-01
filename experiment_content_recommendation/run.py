@@ -275,8 +275,11 @@ def run_my_media_lite(method,train_file_name,output_prefix):
 
     #Sorting the output file
     output_file_name = output_prefix+"_"+ method + ".csv"
-    commands.getoutput("sort -t, -k3,3gr "+tmp_file_name+" > "+output_file_name)
+    tmp_dir_name = output_prefix+"_tmp_dir"
+    commands.getoutput("mkdir "+tmp_dir_name)
+    commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
     commands.getoutput("rm "+tmp_file_name)
+    commands.getoutput("rm -r "+tmp_dir_name)
 
 def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
     """
@@ -332,8 +335,11 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
     
     #Sorting the output file
     output_file_name = output_prefix+"_profilerank.csv"
-    commands.getoutput("sort -t, -k3,3gr "+tmp_file_name+" > "+output_file_name)
+    tmp_dir_name = output_prefix+"_tmp_dir"
+    commands.getoutput("mkdir "+tmp_dir_name)
+    commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
     commands.getoutput("rm "+tmp_file_name)
+    commands.getoutput("rm -r "+tmp_dir_name)
 
 class Usage(Exception):
     def __init__(self, msg):
