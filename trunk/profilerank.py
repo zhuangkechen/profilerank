@@ -5,6 +5,7 @@ from numpy import array
 import getopt
 import math
 import warnings
+import commands
 
 warnings.simplefilter('ignore',SparseEfficiencyWarning)
 
@@ -61,6 +62,140 @@ def power_method(M1,M2,num_iterations,damping_factor,num_columns,user=""):
 
     return S.getrow(0).toarray()
 
+def fast_read_data(input_file_name,function):
+    """
+    Reads input data. 
+    Format:  
+        <user,content>
+        <user,content>
+	...
+
+    Lines must be sorted according to the order in which the content appears.
+    Returns two dictionaries containing user and content ids and two matrices (CU and UC).
+    CU is a content-user matrix. It connects content to its information sources (users).
+    UC is a user-content matrix. It connects sources/users to the content they propagate.
+    """
+    tmp_dir_name = "profilerank_tmp_dir"
+    tmp_file_name = "profilerank.tmp"
+    commands.getoutput("mkdir "+tmp_dir_name)
+    commands.getoutput("sort -st, -k2,2 -T "+tmp_dir_name+" "+input_file_name+" > "+tmp_file_name)
+    commands.getoutput("rm -r "+tmp_dir_name)
+
+    input_file = open(tmp_file_name, 'r')
+    users = {}
+    contents = {}
+    user_id = 0
+    content_id = -1
+    sum_user = {}
+    sum_content = {}
+
+    user_content = []
+    content_user = []
+    non_dangling_users = {}
+
+    last_content = ""
+    n = 0
+    
+    for line in input_file:
+        n = n + 1
+	if n % 10000 == 0:
+	    print "== %d lines read ==" % n
+        line = line.rstrip()
+	vec = line.rsplit(',')
+        user = vec[0]
+	content = vec[1]
+
+	if user not in users:
+	    users[user] = user_id
+	    user = user_id
+	    user_id = user_id + 1
+        else:
+	    user = users[user]
+	
+	if user not in sum_user:
+	    sum_user[user] = 0
+	
+	if content != last_content:
+	    content_id = content_id + 1
+	    contents[content] = content_id
+	    content_user.append([content_id,user,1])
+	    sum_content[content_id] = 1
+	else:
+	    non_dangling_users[user] = 1
+	
+	user_content.append([user,content_id,1])
+	sum_user[user] = sum_user[user] + 1
+	last_content = content
+
+    input_file.close()
+    #commands.getoutput("rm "+tmp_file_name)
+
+    content_id = content_id + 1
+
+    #Both UC and CU are normalized.
+    for user in sum_user:
+        content_user.append([content_id,user,float(1)/user_id])
+        
+	#dangling users/sources are connected connected to a default content in the UC matrix.
+        if user not in non_dangling_users:
+	    user_content.append([user,content_id,1])
+	    sum_user[user] = sum_user[user] + 1
+
+    for i in range(0,len(user_content)):
+        user_content[i][2] =  float(user_content[i][2]) / (sum_user[user_content[i][0]])
+
+#    for content in sum_content:
+#	sum_value = 0.0
+           
+#	for j in range(0,len(content_user)):
+#	    if content == content_user[j][0]:
+#	        sum_value = sum_value + content_user[j][2]
+
+#        for j in range(0,len(content_user)):
+#	    if content == content_user[j][0]:
+#	        content_user[j][2] = float(content_user[j][2]) / (sum_value)
+    
+    content_id = content_id + 1
+
+#    print "user_content:"
+#    for i in range(0,len(user_content)):
+#        print user_content[i]
+
+#    print "content_user:"
+#    for i in range(0,len(content_user)):
+#        print content_user[i]
+
+    row = []
+    column = []
+    data = []
+
+    for i in range(0,len(user_content)):
+        row.append(user_content[i][0])
+        column.append(user_content[i][1])
+        data.append(user_content[i][2])
+
+    user_content = []
+
+    #Generating UC matrix using coo_matrix from scipy
+    UC = coo_matrix((data,(row,column)), shape=(user_id,content_id))
+    
+    row = []
+    column = []
+    data = []
+
+    for i in range(0,len(content_user)):
+        row.append(content_user[i][0])
+        column.append(content_user[i][1])
+        data.append(content_user[i][2])
+
+    content_user = []
+
+    #Generating CU matrix using coo_matrix from scipy
+    CU = coo_matrix((data,(row,column)), shape=(content_id,user_id))
+
+    return users,contents,UC,CU
+
+
 def read_data(input_file_name,function):
     """
     Reads input data. 
@@ -111,52 +246,52 @@ def read_data(input_file_name,function):
 	    else:
 	        non_dangling_users[user] = 1
 	
-	elif function == "uniform":
-	    if content not in contents:
-	        contents[content] = content_id
-	        sum_content[content_id] = 0
-	        content_id = content_id + 1
-	    else:
-	        non_dangling_users[user] = 1
+#	elif function == "uniform":
+#	    if content not in contents:
+#	        contents[content] = content_id
+#	        sum_content[content_id] = 0
+#	        content_id = content_id + 1
+#	    else:
+#	        non_dangling_users[user] = 1
 	        
-            content_user.append([contents[content],user,1])
-	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+#            content_user.append([contents[content],user,1])
+#	    sum_content[contents[content]] = sum_content[contents[content]] + 1
 
-	elif function == "linear":
-	    if content not in contents:
-	        contents[content] = content_id
-	        sum_content[content_id] = 0
-	        content_id = content_id + 1
-	    else:
-	        non_dangling_users[user] = 1
-            
-	    value = float(1) / (sum_content[contents[content]]+1)
-	    content_user.append([contents[content],user,value])
-	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+#	elif function == "linear":
+#	    if content not in contents:
+#	        contents[content] = content_id
+#	        sum_content[content_id] = 0
+#	        content_id = content_id + 1
+#	    else:
+#	        non_dangling_users[user] = 1
 
-	elif function == "exponential":
-	    if content not in contents:
-	        contents[content] = content_id
-	        sum_content[content_id] = 0
-	        content_id = content_id + 1
-	    else:
-	        non_dangling_users[user] = 1
+#	    value = float(1) / (sum_content[contents[content]]+1)
+#	    content_user.append([contents[content],user,value])
+#	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+
+#	elif function == "exponential":
+#	    if content not in contents:
+#	        contents[content] = content_id
+#	        sum_content[content_id] = 0
+#	        content_id = content_id + 1
+#	    else:
+#	        non_dangling_users[user] = 1
             
-	    value = float(1) / math.exp(sum_content[contents[content]])
-	    content_user.append([contents[content],user,value])
-	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+#	    value = float(1) / math.exp(sum_content[contents[content]])
+#	    content_user.append([contents[content],user,value])
+#	    sum_content[contents[content]] = sum_content[contents[content]] + 1
 	
-	elif function == "logarithm":
-	    if content not in contents:
-	        contents[content] = content_id
-	        sum_content[content_id] = 0
-	        content_id = content_id + 1
-	    else:
-	        non_dangling_users[user] = 1
+#	elif function == "logarithm":
+#	    if content not in contents:
+#	        contents[content] = content_id
+#	        sum_content[content_id] = 0
+#	        content_id = content_id + 1
+#	    else:
+#	        non_dangling_users[user] = 1
             
-	    value = float(1) / math.log(sum_content[contents[content]]+2)
-	    content_user.append([contents[content],user,value])
-	    sum_content[contents[content]] = sum_content[contents[content]] + 1
+#	    value = float(1) / math.log(sum_content[contents[content]]+2)
+#	    content_user.append([contents[content],user,value])
+#	    sum_content[contents[content]] = sum_content[contents[content]] + 1
 	    
 	content = contents[content]
 	user_content.append([user,content,1])
@@ -481,8 +616,10 @@ def main(argv=None):
 	if silent == False:
 	    print "python profilerank.py [-n %d] [-d %lf] [-o %s] [-a %s] [-u %s] [-l %s] [-f %s] [%s]" %(num_iterations, damping_factor, output_file_name, analysis, user, user_list_file_name, function, input_file_name[0])
     
+        print "reading data"
         #Read the input file
-        (users,contents,UC,CU) = read_data(input_file_name[0],function)
+        (users,contents,UC,CU) = fast_read_data(input_file_name[0],function)
+	print "reading finished!"
 
         if user_list_file_name == "none":
 	    user_relevance = []
