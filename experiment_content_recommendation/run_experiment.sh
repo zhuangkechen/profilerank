@@ -1,13 +1,16 @@
 #!/bin/bash
 
 databases_dir='../../data/'
-#databases=("fiat" "brasileirao" "elections") 
-databases=("brasileirao" "elections") 
+databases=("fiat") 
+#databases=("brasileirao") 
+#databases=("elections") 
 train_rate=0.5
-#min_freq_content=("2" "2" "2")
-#min_freq_user=("5" "10" "10")
-min_freq_content=("4" "4")
-min_freq_user=("10" "10")
+min_freq_content=("2")
+min_freq_user=("5")
+#min_freq_content=("5")
+#min_freq_user=("20")
+#min_freq_content=("5")
+#min_freq_user=("20")
 num_iterations_profilerank=10
 damping_factor=0.85
 my_media_lite_methods=("BPRMF" "Random" "UserKNN" "WRMF" "MostPopular" "WeightedItemKNN" "WeightedUserKNN" "SoftMarginRankingMF" "WeightedBPRMF")
