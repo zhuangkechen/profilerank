@@ -618,7 +618,8 @@ def main(argv=None):
     
         print "reading data"
         #Read the input file
-        (users,contents,UC,CU) = fast_read_data(input_file_name[0],function)
+#        (users,contents,UC,CU) = fast_read_data(input_file_name[0],function)
+        (users,contents,UC,CU) = read_data(input_file_name[0],function)
 	print "reading finished!"
 
         if user_list_file_name == "none":
