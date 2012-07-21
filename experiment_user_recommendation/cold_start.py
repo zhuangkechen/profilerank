@@ -190,25 +190,28 @@ def compute_proximities_squares(output_prefix, bootstrap_proximities):
         model_file_name = "models_cold_start/"+output_prefix+"_"+str(u)
         probabilities = {}
         
-	for y in bootstrap_proximities:
-	    if u != y:
+	for v in bootstrap_proximities:
+	    if u != v:
 	        for z in bootstrap_proximities[u]:
 	            u_z = bootstrap_proximities[u][z]
 	    
-	            for v in bootstrap_proximities[y]:
-		        y_v = bootstrap_proximities[y][v]
+		    if z in bootstrap_proximities[v]:
+		        v_z = bootstrap_proximities[v][z]
+		    else:
+		        v_z = 0
+		    
+		    if v_z > 0:
+		        for y in bootstrap_proximities[v]:
+		            v_y = bootstrap_proximities[v][y]
 
-		        if z in bootstrap_proximities[y]:
-		            y_z = bootstrap_proximities[y][z]
-		        else:
-		            y_z = 0
-
-                        u_v = y_z * y_v * u_z
-
-		        if v in probabilities:
-		            probabilities[v] = probabilities[v] + u_v
-		        else:
-		            probabilities[v] = u_v
+                            u_y = u_z * v_z * v_y
+			    
+#			    print "u_y = %lf * %lf * %lf" % (u_z, v_z, v_y)
+                         
+		            if y in probabilities:
+		                probabilities[y] = probabilities[y] + u_y
+		            else:
+		                probabilities[y] = u_y
 
 	save_proximities(model_file_name, probabilities, u)
 
