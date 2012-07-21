@@ -171,7 +171,6 @@ def run_cold_start(content_file_name,bootstrap_method,transitivity_method,output
         prefix = str(output_prefix)+"_"+str(bootstrap_method)+"_"+str(transitivity_method)
         commands.getoutput("python cold_start.py -b "+str(bootstrap_method)+" -t "+str(transitivity_method)+" -o "+str(prefix)+" "+str(content_file_name))
 
-
 class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg

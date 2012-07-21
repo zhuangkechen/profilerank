@@ -4,14 +4,13 @@ databases_dir='../../data/'
 databases=("brasileirao") 
 train_rate=0.5
 min_freq_content=("2")
-min_freq_user=("5")
+min_freq_user=("20")
 num_iterations_profilerank=10
 damping_factor=0.85
 cold_start_methods=("common-content_none" "adamic-adar_none" "common-content_triangles" "common-content_squares" "adamic-adar_triangles" "adamic-adar_squares" "common-content_none_ordered" "adamic-adar_none_ordered" "common-content_triangles_ordered" "common-content_squares_ordered" "adamic-adar_triangles_ordered" "adamic-adar_squares_ordered")
+#cold_start_methods=("common-content_squares" "adamic-adar_squares")
 
 d=0
-
-python run.py [-n <num iterations profilerank>] [-d <damping factor profilerank>] [-o <output prefix>] [-f <dist function>] [<content file>]
 
 for database in ${databases[@]}
 do
