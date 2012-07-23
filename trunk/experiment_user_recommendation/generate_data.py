@@ -110,10 +110,13 @@ def random_users(users, num_users, min_freq_user):
 	if user_list[i] not in selected:
 	    selected[user_list[i]] = True
 	    n = n + 1
+
+	    if n % 10 == 0:
+	        print "%d vertices selected" % (n)
     
     return selected
 
-def generate_data(input_content_file_name, input_network_file_name, content_file_name, network_file_name, min_freq_content, min_freq_user, num_users, users_to_be_predicted_file_name):
+def generate_data(input_content_file_name, input_network_file_name, content_file_name, network_file_name, min_freq_content, min_freq_user, num_users_network):
     """
         Generates input data for the user recommendation experiment
     """
@@ -148,16 +151,12 @@ def generate_data(input_content_file_name, input_network_file_name, content_file
 	    content_file.write(user+","+content+"\n")
 
     content_file.close()
-    #Selecting users at random
-#    users_selected = random_users(users, num_users, min_freq_user)
+
+    if num_users_network > num_users:
+        num_users_network = num_users
     
-    #Selected users are put in a file
-#    user_list_file = open(users_to_be_predicted_file_name, 'w')
-
-#    for user in users_selected:
- #       user_list_file.write(str(user)+"\n")
-
-  #  user_list_file.close() 
+    #Selecting users at random
+    users_selected = random_users(users, num_users_network, min_freq_user)
     
     input_content_file.close()
     input_network_file = open(input_network_file_name, 'r')
@@ -168,7 +167,7 @@ def generate_data(input_content_file_name, input_network_file_name, content_file
         line = line.rstrip()
 	vec = line.rsplit(',')
 
-	if vec[0] in users and users[vec[0]] >= min_freq_user and vec[1] in users and users[vec[1]] >= min_freq_user:
+	if vec[0] in users and users[vec[0]] >= min_freq_user and vec[1] in users and users[vec[1]] >= min_freq_user and vec[0] in users_selected:
             network_file.write(vec[0]+","+vec[1]+"\n")
     
     network_file.close()
@@ -185,13 +184,12 @@ def main(argv=None):
 
     try:
         try:
-            opts, input_file_name = getopt.getopt(argv[1:], "c:n:t:u:m:p:hs", ["content-file=","network-file=","min-freq-content=","min-freq-user=","num-users","predicted=","help","silent"])
+            opts, input_file_name = getopt.getopt(argv[1:], "c:n:t:u:m:hs", ["content-file=","network-file=","min-freq-content=","min-freq-user=","num-users","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
  
         content_file_name = "content.csv"
 	network_file_name = "network.csv"
-	users_to_be_predicted_file_name = "users.csv"
 	min_freq_content = 10
 	min_freq_user = 10
 	num_users = 500
@@ -217,9 +215,6 @@ def main(argv=None):
 	    if opt in ('-m', '--num-users'):
 	        num_users = int(arg)
 	    
-	    if opt in ('-p', '--predicted'):
-	        users_to_be_predicted_file_name = arg
-	    
 	    if opt in ('-s', '--silent'):
 	        silent = True
 	    
@@ -228,9 +223,9 @@ def main(argv=None):
 	        sys.exit()
 
         if silent is False:
-	    print "python generate_data.py [-c %s] [-n %s] [-t %d] [-u %d] [-m %d] [-p %s] [%s] [%s]" % (content_file_name, network_file_name, min_freq_content, min_freq_user, num_users, users_to_be_predicted_file_name, input_file_name[0], input_file_name[1])
+	    print "python generate_data.py [-c %s] [-n %s] [-t %d] [-u %d] [-m %d] [%s] [%s]" % (content_file_name, network_file_name, min_freq_content, min_freq_user, num_users, input_file_name[0], input_file_name[1])
 
-        generate_data(input_file_name[0], input_file_name[1], content_file_name, network_file_name, min_freq_content, min_freq_user, num_users, users_to_be_predicted_file_name)
+        generate_data(input_file_name[0], input_file_name[1], content_file_name, network_file_name, min_freq_content, min_freq_user, num_users)
 
     except Usage, err:
         print >>sys.stderr, err.msg
