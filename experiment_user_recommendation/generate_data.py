@@ -116,7 +116,7 @@ def random_users(users, num_users, min_freq_user):
     
     return selected
 
-def generate_data(input_content_file_name, input_network_file_name, content_file_name, network_file_name, min_freq_content, min_freq_user, num_users_network):
+def generate_data(input_content_file_name, input_network_file_name, content_file_name, network_file_name, min_freq_content, min_freq_user):
     """
         Generates input data for the user recommendation experiment
     """
@@ -152,12 +152,6 @@ def generate_data(input_content_file_name, input_network_file_name, content_file
 
     content_file.close()
 
-    if num_users_network > num_users:
-        num_users_network = num_users
-    
-    #Selecting users at random
-    users_selected = random_users(users, num_users_network, min_freq_user)
-    
     input_content_file.close()
     input_network_file = open(input_network_file_name, 'r')
     network_file = open(network_file_name, 'w')
@@ -167,7 +161,7 @@ def generate_data(input_content_file_name, input_network_file_name, content_file
         line = line.rstrip()
 	vec = line.rsplit(',')
 
-	if vec[0] in users and users[vec[0]] >= min_freq_user and vec[1] in users and users[vec[1]] >= min_freq_user and vec[0] in users_selected:
+	if vec[0] in users and users[vec[0]] >= min_freq_user and vec[1] in users and users[vec[1]] >= min_freq_user:
             network_file.write(vec[0]+","+vec[1]+"\n")
     
     network_file.close()
@@ -184,7 +178,7 @@ def main(argv=None):
 
     try:
         try:
-            opts, input_file_name = getopt.getopt(argv[1:], "c:n:t:u:m:hs", ["content-file=","network-file=","min-freq-content=","min-freq-user=","num-users","help","silent"])
+            opts, input_file_name = getopt.getopt(argv[1:], "c:n:t:u:hs", ["content-file=","network-file=","min-freq-content=","min-freq-user=","help","silent"])
         except getopt.error, msg:
             raise Usage(msg)
  
@@ -192,11 +186,10 @@ def main(argv=None):
 	network_file_name = "network.csv"
 	min_freq_content = 10
 	min_freq_user = 10
-	num_users = 500
 	silent = False
 
         if len(input_file_name) < 2:
-	    print "python generate_data.py [-c <content file>] [-n <network file>] [-t <min freq content>] [-u <min freq user>] [-m <num users>] [input content file] [input network file]"
+	    print "python generate_data.py [-c <content file>] [-n <network file>] [-t <min freq content>] [-u <min freq user>] [input content file] [input network file]"
 	    sys.exit()
 
         for opt,arg in opts:
@@ -212,20 +205,17 @@ def main(argv=None):
 	    if opt in ('-u', '--min-freq-user'):
 	        min_freq_user = int(arg)
 	    
-	    if opt in ('-m', '--num-users'):
-	        num_users = int(arg)
-	    
 	    if opt in ('-s', '--silent'):
 	        silent = True
 	    
 	    if opt in ('-h', '--help'):
-	        print "python generate_data.py [-c <content file>] [-n <network file>] [-t <min freq content>] [-u <min freq user>] [-m num users] [-p user list] [input content file] [input network file]"
+	        print "python generate_data.py [-c <content file>] [-n <network file>] [-t <min freq content>] [-u <min freq user>] [input content file] [input network file]"
 	        sys.exit()
 
         if silent is False:
-	    print "python generate_data.py [-c %s] [-n %s] [-t %d] [-u %d] [-m %d] [%s] [%s]" % (content_file_name, network_file_name, min_freq_content, min_freq_user, num_users, input_file_name[0], input_file_name[1])
+	    print "python generate_data.py [-c %s] [-n %s] [-t %d] [-u %d] [%s] [%s]" % (content_file_name, network_file_name, min_freq_content, min_freq_user, input_file_name[0], input_file_name[1])
 
-        generate_data(input_file_name[0], input_file_name[1], content_file_name, network_file_name, min_freq_content, min_freq_user, num_users)
+        generate_data(input_file_name[0], input_file_name[1], content_file_name, network_file_name, min_freq_content, min_freq_user)
 
     except Usage, err:
         print >>sys.stderr, err.msg
