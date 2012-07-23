@@ -224,18 +224,24 @@ def compute_proximities_triangles(output_prefix, bootstrap_proximities):
         probabilities = {}
 	
 	for y in bootstrap_proximities[u]:
+#	    if y in probabilities:
+#	        probabilities[y] = probabilities[y] + bootstrap_proximities[u][y]
+#	    else:
+#	        probabilities[y] = bootstrap_proximities[u][y]
+
 	    u_y = bootstrap_proximities[u][y]
 
             for v in bootstrap_proximities[y]:
 	        y_v = bootstrap_proximities[y][v]
 
-	    u_v = u_y * y_v
+	        if u != v:
+		    u_v = u_y * y_v
 
-	    if v in probabilities:
-	        probabilities[v] = probabilities[v] + u_v
-	    else:
-                probabilities[v] = u_v
-	
+	            if v in probabilities:
+	                probabilities[v] = probabilities[v] + u_v
+	            else:
+                        probabilities[v] = u_v
+
 	save_proximities(model_file_name, probabilities, u)
 
 def run_cold_start_link_prediction(content_file_name,output_prefix,bootstrap_strategy,transitivity_strategy,in_order):
@@ -294,8 +300,6 @@ def run_cold_start_link_prediction(content_file_name,output_prefix,bootstrap_str
 	        else:
 		    score = 0
 	        
-		score = score * len(users[user])
-
 		if score > 0:
 		    output_file.write(user+","+rec_user+","+str(score)+"\n")
 
