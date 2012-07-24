@@ -29,6 +29,7 @@ do
 	
 	echo "Evaluating profilerank"
 	python evaluate.py -o $database-profilerank $database\_profilerank.csv test-$database.csv -s
+	python evaluate.py -o $database-profilerank_global $database\_profilerank_global.csv test-$database.csv -s
 
 	for method in ${my_media_lite_methods[@]}
 	do

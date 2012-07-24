@@ -281,7 +281,7 @@ def run_my_media_lite(method,train_file_name,output_prefix):
     commands.getoutput("rm "+tmp_file_name)
     commands.getoutput("rm -r "+tmp_dir_name)
 
-def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
+def run_profile_rank_personalized(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
     """
         Runs tweet recommendation using profilerank
     """
@@ -335,6 +335,63 @@ def run_profile_rank(train_file_name,test_file_name,num_iterations,damping_facto
     
     #Sorting the output file
     output_file_name = output_prefix+"_profilerank.csv"
+    tmp_dir_name = output_prefix+"_tmp_dir"
+    commands.getoutput("mkdir "+tmp_dir_name)
+    commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
+    commands.getoutput("rm "+tmp_file_name)
+    commands.getoutput("rm -r "+tmp_dir_name)
+
+def run_profile_rank_global(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function):
+    """
+        Runs tweet recommendation using profilerank
+    """
+    user_list_file_name = output_prefix+"_user_list.tmp"
+    user_list = open(user_list_file_name, 'w')
+    
+    #Read train users
+    test_users = read_users(test_file_name)
+    train_users = read_users(train_file_name)
+        
+    #The model file stores the ouput from profilerank (1 user per file)
+    model_file_name = "models_profilerank/"+output_prefix+"_global"
+
+    #Read train tweets
+    train_tweets = read_tweets(train_file_name)
+	
+    (train_tweets_users,num) = read_tweets_users(train_file_name)
+
+    for user in test_users:
+        user_list.write(user+"\n")
+
+    user_list.close()
+
+#    print "python ../profilerank.py -n %d -d %lf -o %s -a content -l %s -f %s %s" % (num_iterations,damping_factor,model_file_name,user_list_file_name,function,train_file_name)
+    commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a content"+" -f "+function+" "+train_file_name)
+    
+    tmp_file_name = output_prefix+"_profilerank.tmp"
+    output_file = open(tmp_file_name,'w')
+	
+    for user in test_users:
+	#Read proximities
+        proximities = read_proximities(model_file_name)
+
+        for tweet in train_tweets:
+	    if tweet not in train_tweets_users[user]:
+	        if tweet in proximities:
+	            score = proximities[tweet]
+	        else:
+		    score = 0
+		
+		score = score * float(train_users[user])
+
+		if score > 0:
+		    output_file.write(user+","+tweet+","+str(score)+"\n")
+
+    output_file.close()
+    commands.getoutput("rm "+str(user_list_file_name))
+    
+    #Sorting the output file
+    output_file_name = output_prefix+"_profilerank_global.csv"
     tmp_dir_name = output_prefix+"_tmp_dir"
     commands.getoutput("mkdir "+tmp_dir_name)
     commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
@@ -404,7 +461,8 @@ def main(argv=None):
 	#Removing input files for my_media_lite methods
         remove_my_media_lite_files(output_prefix)
 
-        run_profile_rank(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function)
+        run_profile_rank_personalized(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function)
+        run_profile_rank_global(train_file_name,test_file_name,num_iterations,damping_factor,output_prefix,function)
          
     except Usage, err:
         print >>sys.stderr, err.msg
