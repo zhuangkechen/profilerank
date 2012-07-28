@@ -24,6 +24,8 @@ do
 	
 	echo "Evaluating profilerank"
 	python evaluate.py -o $database-profilerank $database\_profilerank.csv test-$database.csv
+	
+	python evaluate.py -o $database-profilerank_global $database\_profilerank_global.csv test-$database.csv
 
 	for method in ${cold_start_methods[@]}
 	do

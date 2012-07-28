@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 import commands
 import getopt
@@ -106,7 +107,7 @@ def read_proximities(input_file_name):
 
     return proximities
 	     
-def run_profile_rank(content_file_name,num_iterations,damping_factor,output_prefix,function):
+def run_profile_rank_personalized(content_file_name,num_iterations,damping_factor,output_prefix,function):
     """
         Runs user recommendation using profilerank
     """
@@ -155,6 +156,48 @@ def run_profile_rank(content_file_name,num_iterations,damping_factor,output_pref
     c = commands.getoutput("rm "+str(user_list_file_name))
     output_file_name = output_prefix+"_profilerank.csv"
     tmp_dir_name = output_prefix+"_profilerank_tmp_dir"
+    commands.getoutput("mkdir "+tmp_dir_name)
+    commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
+    commands.getoutput("rm "+tmp_file_name)
+    commands.getoutput("rm -r "+tmp_dir_name)
+    
+def run_profile_rank_global(content_file_name,num_iterations,damping_factor,output_prefix,function):
+    """
+        Runs tweet recommendation using profilerank
+    """
+    tmp_file_name = output_prefix+"_profilerank.tmp"
+    output_file = open(tmp_file_name,'w')
+    
+    #Read train users
+    users = read_users(content_file_name)
+	
+    #The model file stores the ouput from profilerank (1 user per file)
+    model_file_name = "models_profilerank/"+output_prefix+"_global"
+
+    #Running profilerank
+    commands.getoutput("python ../profilerank.py -n "+str(num_iterations)+" -d "+str(damping_factor)+" -o "+model_file_name+" -a user"+" -f "+function+" "+content_file_name)
+    
+    for user in users:
+        #Read proximities
+        proximities = read_proximities(model_file_name)
+
+        for rec_user in users:
+	    if rec_user != user:
+	        if rec_user in proximities:
+	            score = proximities[rec_user]
+	        else:
+		    score = 0
+	        
+		score = score * users[user]
+		
+		if score > 0:
+		    output_file.write(user+","+rec_user+","+str(score)+"\n")
+
+    output_file.close()
+    
+    #Sorting the output file
+    output_file_name = output_prefix+"_profilerank_global.csv"
+    tmp_dir_name = output_prefix+"_tmp_dir"
     commands.getoutput("mkdir "+tmp_dir_name)
     commands.getoutput("sort -t, -k3,3gr -T "+tmp_dir_name+" "+tmp_file_name+" > "+output_file_name)
     commands.getoutput("rm "+tmp_file_name)
@@ -224,8 +267,10 @@ def main(argv=None):
 	        run_cold_start(content_file_name,b,t,output_prefix, True)
 	        run_cold_start(content_file_name,b,t,output_prefix, False)
 	
-	run_profile_rank(content_file_name,num_iterations,damping_factor,output_prefix,function)
-         
+	run_profile_rank_personalized(content_file_name,num_iterations,damping_factor,output_prefix,function)
+	run_profile_rank_global(content_file_name,num_iterations,damping_factor,output_prefix,function)
+
+
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, "for help use --help"
